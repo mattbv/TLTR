@@ -85,17 +85,20 @@ class Scan:
         for i, l in enumerate(np.unique(z_slice[(z_slice.labels != -1)].labels)):
             cluster = z_slice[(z_slice.labels == l)]
 
-            xc, yc, R, residu = fit_circle(cluster.x.to_numpy(),
-                                           cluster.y.to_numpy())            
+            try:
+                xc, yc, R, residu = fit_circle(cluster.x.to_numpy(),
+                                               cluster.y.to_numpy())            
             
-            if (residu <= max_residual) & (R <= max_radius):
-                self.stems.loc[i, 'xc'] = xc
-                self.stems.loc[i, 'yc'] = yc
-                self.stems.loc[i, 'zc'] = np.mean(cluster.z)
-                self.stems.loc[i, 'R'] = R
-                self.stems.loc[i, 'residual'] = residu
-                self.stems.loc[i, 'labels'] = l
-       
+                if (residu <= max_residual) & (R <= max_radius):
+                    self.stems.loc[i, 'xc'] = xc
+                    self.stems.loc[i, 'yc'] = yc
+                    self.stems.loc[i, 'zc'] = np.mean(cluster.z)
+                    self.stems.loc[i, 'R'] = R
+                    self.stems.loc[i, 'residual'] = residu
+                    self.stems.loc[i, 'labels'] = l
+            except:
+                pass
+           
         return self
     
 
