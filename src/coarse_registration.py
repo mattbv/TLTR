@@ -12,7 +12,7 @@ from ransac_circle import RANSAC
 import transformations as tt
 
 def iterative_icp(key_points, base_points, max_matches=7, min_matches=3,
-                  max_plane_rot=0.2):
+                  max_plane_rot=0.2, max_transl=1):
     
     if max_matches > np.min([key_points.shape[0], base_points.shape[0]]):
         max_matches = np.min([key_points.shape[0], base_points.shape[0]])
@@ -36,10 +36,13 @@ def iterative_icp(key_points, base_points, max_matches=7, min_matches=3,
                 rotation_angles = tt.euler_from_matrix(T)
                 max_plane_angle =  np.max(np.abs(rotation_angles[:2]))
                 
-                if (mean_error < min_error) & (max_plane_angle <= max_plane_rot):
-                    min_error = mean_error
-                    optimum_T = T
-                    total_matches = sn
+                max_T_transl = np.max(T[:3, 3])
+                
+                if (max_plane_angle <= max_plane_rot) & (max_T_transl <= max_transl):
+                    if mean_error < min_error:
+                        min_error = mean_error
+                        optimum_T = T
+                        total_matches = sn
                     
     return optimum_T, min_error, total_matches
 

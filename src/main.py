@@ -36,7 +36,6 @@ class Scan:
             
         self.first_approximation(x, y)
         self.calculate_dem(2)
-        self.find_stems_2d(0.05, 200)
                     
     def rotate_tilt(self):
         
@@ -75,12 +74,14 @@ class Scan:
 
         return self
     
-    def find_stems_2d(self, eps, min_samples, max_residual=0.08, max_radius=0.2):
-        z_slice = self.scan[self.scan.z_norm.between(1.4, 1.5)].copy()
+    def find_stems_2d(self, eps, min_samples, base_height=1.4, top_height=1.5,
+                      max_residual=0.08, max_radius=0.2):
+        z_slice = self.scan[self.scan.z_norm.between(base_height,
+                                                     top_height)].copy()
         db = DBSCAN(eps=eps, min_samples=min_samples).fit(z_slice[['x', 'y']])
         z_slice.loc[:, 'labels'] = db.labels_
         
-        self.stems = pd.DataFrame()
+        stems = pd.DataFrame()
 
         for i, l in enumerate(np.unique(z_slice[(z_slice.labels != -1)].labels)):
             cluster = z_slice[(z_slice.labels == l)]
@@ -90,16 +91,16 @@ class Scan:
                                                cluster.y.to_numpy())            
             
                 if (residu <= max_residual) & (R <= max_radius):
-                    self.stems.loc[i, 'xc'] = xc
-                    self.stems.loc[i, 'yc'] = yc
-                    self.stems.loc[i, 'zc'] = np.mean(cluster.z)
-                    self.stems.loc[i, 'R'] = R
-                    self.stems.loc[i, 'residual'] = residu
-                    self.stems.loc[i, 'labels'] = l
+                    stems.loc[i, 'xc'] = xc
+                    stems.loc[i, 'yc'] = yc
+                    stems.loc[i, 'zc'] = np.mean(cluster.z)
+                    stems.loc[i, 'R'] = R
+                    stems.loc[i, 'residual'] = residu
+                    stems.loc[i, 'labels'] = l
             except:
                 pass
            
-        return self
+        return stems
     
 
 if __name__ == "__main__":
@@ -109,13 +110,18 @@ if __name__ == "__main__":
     s1 = Scan('../test_data/ScanPos037 - SINGLESCANS - 190710_205348.txt', 0, 0, False)
     s2 = Scan('../test_data/ScanPos038 - SINGLESCANS - 190710_205748.txt', 0, 0, True)
     
+#    find stems in multiple height layers
+    stems1 = s1.find_stems_2d(0.05, 200)
+    stems2 = s2.find_stems_2d(0.05, 200)
+
     # Extracting the centre point coordinates from stems detected for scans 1
     # and 2.
-    stem1_points = np.vstack((s1.stems.xc, s1.stems.yc, s1.stems.zc)).T
-    stem2_points = np.vstack((s2.stems.xc, s2.stems.yc, s2.stems.zc)).T
+    stem1_points = np.vstack((stems1.xc, stems1.yc, stems1.zc)).T
+    stem2_points = np.vstack((stems2.xc, stems2.yc, stems2.zc)).T
     
     # Running Iterative Closest Point (ICP) to match stem points from scans.
-    T, mean_error, total_matches = iterative_icp(stem2_points, stem1_points)
+    T, mean_error, total_matches = iterative_icp(stem2_points, stem1_points,
+                                                 max_plane_rot=5)
     
     # Extracting point clouds from scans 1 and 2.
     scan1_points = np.vstack((s1.scan.x, s1.scan.y, s1.scan.z)).T
